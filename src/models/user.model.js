@@ -26,24 +26,16 @@ const userSchema = new Schema({
     },
     profilePic: {
         type: String,
-        required: false
     },
     bannerPic: {
-        type: String,
-        required: false
+        type: String
     },
     savedBlogs: {
         type: [mongoose.Schema.Types.ObjectId],
-        ref: "Blog",
-        required: false
+        ref: "Blog"
     },
     bio: {
-        type: String,
-        required: false
-    },
-    refreshToken: {
-        type: String,
-        required: false
+        type: String
     }
 }, {timestamps: true})
 
@@ -57,6 +49,7 @@ userSchema.pre("save", async function(next) {
 userSchema.methods.comparePassword = async function(enteredPassword) {
     return await bcrypt.compare(enteredPassword, this.password)
 }
+
 userSchema.methods.generateAccessToken = function() {
     return jwt.sign({_id: this._id, email: this.email, username: this.username, fullname: this.fullname}, process.env.ACCESS_TOKEN_SECRET, {expiresIn: process.env.ACCESS_TOKEN_EXPIRY})
 }
