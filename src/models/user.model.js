@@ -40,6 +40,10 @@ const userSchema = new Schema({
     bio: {
         type: String,
         required: false
+    },
+    refreshToken: {
+        type: String,
+        required: false
     }
 }, {timestamps: true})
 
