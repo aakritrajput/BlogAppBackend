@@ -40,7 +40,7 @@ router.route("/changeProfilePic").patch(verifyJWT, upload.single("profilePic"), 
 router.route("/changeBannerPic").patch(verifyJWT, upload.single("bannerPic"), changeBannerPic)
 router.route("/updateProfile").patch(verifyJWT, updateProfile)
 router.route("/bloggers").get(verifyJWT, getBloggers)
-router.route("/userProfile").get(verifyJWT, getUserProfile)
+router.route("/userProfile/:userId").get(verifyJWT, getUserProfile)
 router.route("/profile").get(verifyJWT, getCurrentUserProfile)
 router.route("/savedBlogs").get(verifyJWT, getSavedBlogs)
 

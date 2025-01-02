@@ -418,12 +418,12 @@ const getBloggers = asyncHandler(async(req, res)=> {
 })
 
 const getUserProfile = asyncHandler(async(req,res)=>{
-    const query = req.query
+    const {userId} = req.params
     if(!query){
         throw new ApiError(400, "query is required")
     }
     try {
-        const userProfile = await User.find(query).select("-password -otp -otpExpiry")
+        const userProfile = await User.findById(userId).select("-password -otp -otpExpiry")
         if(userProfile.length === 0){
             throw new ApiError(400, "No user found with the given username")
         }

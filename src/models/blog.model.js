@@ -15,12 +15,11 @@ const blogSchema = new Schema({
         required: true
     },
     tags: {
-        type: [String],
-        required: false
+        type: [String]
     },
     coverImage: {
         type: String,
-        required: false
+        required: true
     }
 }, {timestamps: true})
 
