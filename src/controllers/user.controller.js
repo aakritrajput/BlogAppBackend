@@ -241,17 +241,229 @@ const changePassword = asyncHandler(async(req, res)=>{
     }
 })
 
-const forgotPassword = asyncHandler(async(req, res)=>{
+const sendOTP = asyncHandler(async(req, res)=>{
+    try {
+        const {email} = req.body
+        if(!email){
+            throw new ApiError(400, "email is required to reset the password !!")
+        }
+        const user = await User.find({email})
+        if(!user){
+            throw new ApiError(400, "No user exists with the given email !!")
+        }
+        const OTP = Math.floor(1000 + Math.random() * 900000)
+        const otpExpiry = Date.now() + 2 * 60 * 1000 // 2minute expiry 
+
+        user.otp = OTP
+        user.otpExpiry = otpExpiry
+        await user.save({validateBeforeSave:false})
+
+        const transporter = nodemailer.createTransport({
+            service: "gmail", // Use Gmail's service
+            auth: {
+              user: process.env.PROJECT_OWNER_EMAIL, 
+              pass: process.env.PROJECT_OWNER_PASSWORD, 
+            },
+          });
+      
+          const mailOptions = {
+            from: `"BlogApp" <${process.env.PROJECT_OWNER_EMAIL}>`, 
+            to: email, 
+            subject: "Password Reset OTP",
+            text: `Your OTP for resetting the password is: ${OTP}. It is valid for 2 minutes.`,    
+          };
+    
+          await transporter.sendMail(mailOptions);
+      
+          console.log("Password Reset OTP sent successfully to email:", email);
+          res.status(200).json(new ApiResponse(200, {}, "OTP sent successfully to the registered email !!"))
+
+    } catch (error) {
+        throw new ApiError(500, error.message || "error sending OTP")
+    }
     
 })
 
+const verifyOTP = asyncHandler(async(req, res)=> {
+    try {
+        const {email, otp} = req.body
+        if(!email || !otp){
+            throw new ApiError(400, "both email and otp are required to verify OTP")
+        }
+        const user = await User.find({email})
+        if(!user){
+            throw new ApiError(400, "No user with given email")
+        }
+    
+        if(user.otp !== Number(otp) || user.otpExpiry < Date.now()){
+            throw new ApiError(400, "OTP expired or Invalid")
+        }
+    
+        user.otp = undefined;
+        user.otpExpiry = undefined;
+        user.save({validateBeforeSave:false})
+        res.status(200).json(200, {}, "OTP verified successfully")
+    } catch (error) {
+        throw new ApiError(400, error.message || "error verifying otp")
+    }
+})
 
+const resetPassword = asyncHandler(async(req, res)=> {
+    const { email, newPassword } = req.body;
 
+  try {
+    const user = await User.findOne({ email });
 
-//forgot password ---
-//change profilePic or update Profile
-//getuserByusername or full name --> implement search thing here !! ---
-// get profile 
-// get saved blogs 
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
 
+    // Update password and clear OTP fields
+    user.password = newPassword; 
+    await user.save({validateBeforeSave:false});
 
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    throw new ApiError(500, error.message || "error reseting your password !")
+  }
+})
+
+const changeProfilePic = asyncHandler(async(req,res)=>{
+   try {
+     const profilePic = req.file?.path
+     if(!profilePic){
+         throw new ApiError(400, "profile pic is required to change the profile pic !!")
+     }
+     const user = req.user
+     const oldProfilePic = user.profilePic
+     if(oldProfilePic.length > 0){
+         await deleteFromCloudinary(oldProfilePic)
+     }
+     const newProfilePic = await uploadOnCloudinary(profilePic)
+     user.profilePic = newProfilePic.url
+     await user.save({validateBeforeSave:false})
+ 
+     res.status(200).json(new ApiResponse(200, {profilePic: user.profilePic}, "Profile Pic changed successfully"))
+   } catch (error) {
+    throw new ApiError(500, error.message || "error changing profile pic !!")
+   }
+})
+
+const changeBannerPic = asyncHandler(async(req,res)=>{
+    try {
+      const bannerPic = req.file?.path
+      if(!bannerPic){
+          throw new ApiError(400, "bannerPic is required to change the banner pic !!")
+      }
+      const user = req.user
+      const oldBannerPic = user.bannerPic
+      if(oldBannerPic.length > 0){
+          await deleteFromCloudinary(oldBannerPic)
+      }
+      const newBannerPic = await uploadOnCloudinary(bannerPic)
+      user.bannerPic = newBannerPic.url
+      await user.save({validateBeforeSave:false})
+  
+      res.status(200).json(new ApiResponse(200, {newBannerPic: user.bannerPic}, "Banner Pic changed successfully"))
+    } catch (error) {
+     throw new ApiError(500, error.message || "error changing Banner pic !!")
+    }
+ })
+
+const updateProfile = asyncHandler(async(req,res)=>{
+    try {
+        const {fullname, bio} = req.body
+        if(!fullname){
+            throw new ApiError(400, "fullname is required to update the profile !!")
+        }
+        const user = req.user
+        user.fullname = fullname
+        user.bio = bio
+        await user.save({validateBeforeSave:false})
+        res.status(200).json(new ApiResponse(200, {user}, "Profile updated successfully"))
+    } catch (error) {
+        throw new ApiError(500, error.message || "error updating the profile !!")
+    }
+})
+
+const getUsers = asyncHandler(async(req, res)=> {
+    const { query } = req.query;
+    if (!query) {
+        return res.status(400).json({ message: "Search query is required" });
+    }
+    
+    try {
+        const users = await User.find({
+            $or: [
+                {username: {$regex : query , $options: "i"}},
+                {fullname: {$regex : query , $options: "i"}}
+            ]
+        }).select("fullname username profilePic ")
+        res.status(200).json(new ApiResponse(200, users, "fetched matching users !!"))
+    } catch (error) {
+        throw new ApiError(500, "No user found with the matching username")
+    }
+})
+
+const getUserProfile = asyncHandler(async(req,res)=>{
+    const {query} = req.query
+    if(!query){
+        throw new ApiError(400, "query is required")
+    }
+    try {
+        const userProfile = await User.find(query).select("-password -otp -otpExpiry")
+        if(!userProfile){
+            throw new ApiError(400, "No user found with the given username")
+        }
+        res.status(200).json(new ApiResponse(200, userProfile, "fetched user profile successfully"))
+    } catch (error) {
+        throw new ApiError(500, error.message || "error fetching users profile")
+    }
+})
+
+const getCurrentUserProfile = asyncHandler(async(req, res)=> {
+   try {
+       const user = req.user
+       res.status(200).json(new ApiResponse(200, user, "fetched current user profile successfully !"))
+   } catch (error) {
+       throw new ApiError(500, error.message || "error fetching users profile")
+   }
+})
+
+const getSavedBlogs = asyncHandler(async(req, res)=> {
+    try {
+        const user = req.user
+        const savedBolgs = await User.aggregate([
+            {
+                $match: {
+                    _id : new mongoose.Types.ObjectId(user._id)
+                }
+            },
+            {
+                $unwind: '$savedBlogs'
+            },
+            {
+                $lookup: {
+                    from : "blogs",
+                    localField: "savedBlogs",
+                    foreignField : "_id",
+                    as:'savedBlogDetails'
+                }
+            },
+            {
+                $group: {
+                    _id: '$_id',
+                    username: {$first: '$username'},
+                    fullname: {$first: '$fullname'},
+                    savedBlogs: {$push: { $arrayElemAt: ['$savedBlogDetails',0]}}
+                }
+            }
+        ])
+        if(!savedBolgs){
+            throw new ApiError(200, "error getting saved Blogs")
+        }
+        res.status(200).json( new ApiResponse(200, savedBolgs, "fetched saved blogs successfully !!"))
+    } catch (error) {
+        throw new ApiError(500, error.message || "error getting saved Blogs")
+    }
+}) 
