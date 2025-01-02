@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
 import {asyncHandler} from "../utils/AsyncHandler.js";
-import {User} from "../models/User.js";
+import {User} from "../models/user.model.js";
 import {ApiError} from "../utils/ApiError.js";
 import {ApiResponse} from "../utils/ApiResponse.js";
 import {uploadOnCloudinary, deleteFromCloudinary} from "../utils/cloudinary.js";
 import nodemailer from "nodemailer";
+import jwt from "jsonwebtoken";
 
 const generateVerificationToken = (email) => {
     const token = jwt.sign({email}, process.env.VERIFICATION_TOKEN_SECRET , { expiresIn: process.env.VERIFICATION_TOKEN_EXPIRY });
@@ -14,8 +15,7 @@ const generateVerificationToken = (email) => {
 const sendVerificationEmail = async (email, token) => {
     try {
 
-      const verificationLink = `http://localhost:5000/api/v1/user/auth/verify-email?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
-  
+      const verificationLink = `http://localhost:5000/api/v1/user/register/verify-token?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
       const transporter = nodemailer.createTransport({
         service: "gmail", // Use Gmail's service
         auth: {
@@ -40,8 +40,8 @@ const sendVerificationEmail = async (email, token) => {
   
       console.log("Verification email sent successfully to:", email);
     } catch (error) {
-      console.error("Failed to send verification email:", error.message);
-      throw new Error("Email sending failed. Please try again.");
+      console.log("Failed to send verification email:", error.message);
+      throw new ApiError(500, error.message || "Email sending failed. Please try again.");
     }
 };
 
@@ -75,14 +75,16 @@ const registerUser = asyncHandler(async (req, res) => {
             ]
         })
 
-        if(existingUser){
+        if(existingUser.length > 0){
+            console.log(existingUser)
             throw new ApiError(400, "user already exists with the given username or email!!")
         }
-    
-        const ProfilePicLocalUrl = req.files?.profilePic[0]?.path;
-        const ProfilePic = await uploadOnCloudinary(ProfilePicLocalUrl);
-        const BannerPicLocalUrl = req.files?.bannerPic[0]?.path;
-        const BannerPic = await uploadOnCloudinary(BannerPicLocalUrl);
+       console.log(req.files)
+        const ProfilePicLocalUrl = req.files?.profilePic? req.files.profilePic[0].path : "";
+        const ProfilePic = ProfilePicLocalUrl.length>0 ? await uploadOnCloudinary(ProfilePicLocalUrl) : "";
+
+        const BannerPicLocalUrl = req.files.bannerPic? req.files.bannerPic[0].path : "";
+        const BannerPic = BannerPicLocalUrl.length>0 ? await uploadOnCloudinary(BannerPicLocalUrl) : "";
     
         const user = await User.create({
             username,
@@ -112,8 +114,7 @@ const verifyToken = asyncHandler(async(req,res)=>{
     const {token, email} = req.query;
     const decodedToken = decodeURIComponent(token)
     const decodedEmail = decodeURIComponent(email)
-    
-
+    //console.log(`decodedToken: ${decodedToken} , decodedEmail: ${decodedEmail}`)
     try {
         if(!decodedToken || !decodedEmail){
             throw new ApiError(500, "error decoding uri components")
@@ -121,16 +122,18 @@ const verifyToken = asyncHandler(async(req,res)=>{
         const user = await User.find({
                 email: decodedEmail
             })
-        if(!user){
+        if(user.length === 0){
             throw new ApiError("error getting the user with decoded email")
         }
         const token = await jwt.verify(decodedToken, process.env.VERIFICATION_TOKEN_SECRET)
-        if(token.email == user.email){
-            user.isVarified = true;
-            await user.save({validateBeforeSave: false})
+        //console.log(user)
+        if(token.email !== user[0].email){
+            console.log("token.email: ", token.email, "user.email: ", user.email)
+            throw new ApiError(400, "email in token does not match with the email in the database")
         }
-
-        res.status(200).json(200, {}, "email successfully verified !!")
+        user[0].isVarified = true;
+        await user[0].save({validateBeforeSave: false})
+        res.status(200).json(new ApiResponse(200, {}, "email successfully verified !!"))
     } catch (error) {
         throw new ApiError(404, error.message || "verification link expired or not valid !! Request for another verification link ")
     }
@@ -157,29 +160,29 @@ const loginUser = asyncHandler(async(req, res)=>{
             ]
         })
     
-        if(!user){
+        if(user.length === 0){
             throw new ApiError(400, "user with the given email or username does not exist!!")
         }
     
-        if(user.isVarified === false){
+        if(user[0].isVarified === false){
             throw new ApiError(402, "Your email is not verified !! check email-box for varification link or request for new link")
         }
     
-        const isPasswordCorrect = await user.comparePassword(password)
+        const isPasswordCorrect = await user[0].comparePassword(password)
         if(!isPasswordCorrect){
             throw new ApiError(400, "Incorrect password")
         }
     
-        const accessToken = await user.generateAccessToken()
+        const accessToken = await user[0].generateAccessToken()
         if(!accessToken){
             throw new ApiError(500, "error genarating access token !")
         }
-        const refreshToken = await user.generateRefreshToken()
+        const refreshToken = await user[0].generateRefreshToken()
         if(!refreshToken){
             throw new ApiError(500, "error genarating refresh token !")
         }
     
-        const loggedInUser = await User.findById(user._id).select("-password")
+        const loggedInUser = await User.findById(user[0]._id).select("-password")
     
         const options = {  // cookies can not be modified by frontend but only from the server by this setting or options 
            httpOnly: true,
@@ -190,7 +193,7 @@ const loginUser = asyncHandler(async(req, res)=>{
         .status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
-        .json(new ApiResponse(200, {user: loggedInUser, accessToken, refreshToken}, "User logged in successfully"))
+        .json(new ApiResponse(200, loggedInUser, "User logged in successfully"))
     
     } catch (error) {
         throw new ApiError(500, error.message || "error logging user in ..")
@@ -199,9 +202,16 @@ const loginUser = asyncHandler(async(req, res)=>{
 
 const resendVerificationLink = asyncHandler(async(req, res)=> {
     try {
-        const user = req.user
-        const verificationToken = generateVerificationToken(email);
-        await sendVerificationEmail(user.email, verificationToken);
+        const {email} = req.body
+        const user = await User.find({email})
+        if(user.length === 0){
+            throw new ApiError(400, "No user with the given email !!")
+        }
+        if(user[0].isVarified ){
+            throw new ApiError(400, "User with the given email is already verified")
+        }
+        const verificationToken = generateVerificationToken(user[0].email);
+        await sendVerificationEmail(user[0].email, verificationToken);
         res.status(200).json(new ApiResponse(200, {},"verification link sent successfully"))
     } catch (error) {
         throw new ApiError(500, "Error Sending Verification link")
@@ -225,10 +235,11 @@ const changePassword = asyncHandler(async(req, res)=>{
     try {
         const {oldPassword, newPassword} = req.body;
         if(!oldPassword || !newPassword){
+            console.log("both are required !!")
             throw new ApiError(400, "Both , old and new passwords are required !!")
         }
         const user = await User.findById(req.user._id);
-        const isPassCorrect = await user.comparePassword();
+        const isPassCorrect = await user.comparePassword(oldPassword);
         if(!isPassCorrect){
             throw new ApiError(400, "Incorrect old password")
         }
@@ -248,15 +259,15 @@ const sendOTP = asyncHandler(async(req, res)=>{
             throw new ApiError(400, "email is required to reset the password !!")
         }
         const user = await User.find({email})
-        if(!user){
+        if(user.length === 0){
             throw new ApiError(400, "No user exists with the given email !!")
         }
         const OTP = Math.floor(1000 + Math.random() * 900000)
         const otpExpiry = Date.now() + 2 * 60 * 1000 // 2minute expiry 
 
-        user.otp = OTP
-        user.otpExpiry = otpExpiry
-        await user.save({validateBeforeSave:false})
+        user[0].otp = OTP
+        user[0].otpExpiry = otpExpiry
+        await user[0].save({validateBeforeSave:false})
 
         const transporter = nodemailer.createTransport({
             service: "gmail", // Use Gmail's service
@@ -291,18 +302,18 @@ const verifyOTP = asyncHandler(async(req, res)=> {
             throw new ApiError(400, "both email and otp are required to verify OTP")
         }
         const user = await User.find({email})
-        if(!user){
+        if(user.length === 0){
             throw new ApiError(400, "No user with given email")
         }
     
-        if(user.otp !== Number(otp) || user.otpExpiry < Date.now()){
+        if(user[0].otp !== Number(otp) || user[0].otpExpiry < Date.now()){
             throw new ApiError(400, "OTP expired or Invalid")
         }
     
-        user.otp = undefined;
-        user.otpExpiry = undefined;
-        user.save({validateBeforeSave:false})
-        res.status(200).json(200, {}, "OTP verified successfully")
+        user[0].otp = undefined;
+        user[0].otpExpiry = undefined;
+        user[0].save({validateBeforeSave:false})
+        res.status(200).json(new ApiResponse(200, {}, "OTP verified successfully"))
     } catch (error) {
         throw new ApiError(400, error.message || "error verifying otp")
     }
@@ -313,11 +324,12 @@ const resetPassword = asyncHandler(async(req, res)=> {
 
   try {
     const user = await User.findOne({ email });
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-
+    if(!user.isVarified){
+        throw new ApiError(400, "the given email is not verified request for verification link and check your email !!")
+    }
     // Update password and clear OTP fields
     user.password = newPassword; 
     await user.save({validateBeforeSave:false});
@@ -386,7 +398,7 @@ const updateProfile = asyncHandler(async(req,res)=>{
     }
 })
 
-const getUsers = asyncHandler(async(req, res)=> {
+const getBloggers = asyncHandler(async(req, res)=> {
     const { query } = req.query;
     if (!query) {
         return res.status(400).json({ message: "Search query is required" });
@@ -406,13 +418,13 @@ const getUsers = asyncHandler(async(req, res)=> {
 })
 
 const getUserProfile = asyncHandler(async(req,res)=>{
-    const {query} = req.query
+    const query = req.query
     if(!query){
         throw new ApiError(400, "query is required")
     }
     try {
         const userProfile = await User.find(query).select("-password -otp -otpExpiry")
-        if(!userProfile){
+        if(userProfile.length === 0){
             throw new ApiError(400, "No user found with the given username")
         }
         res.status(200).json(new ApiResponse(200, userProfile, "fetched user profile successfully"))
@@ -467,3 +479,22 @@ const getSavedBlogs = asyncHandler(async(req, res)=> {
         throw new ApiError(500, error.message || "error getting saved Blogs")
     }
 }) 
+
+export {
+    registerUser,
+    verifyToken,
+    loginUser,
+    resendVerificationLink,
+    logoutUser,
+    changePassword,
+    sendOTP,
+    verifyOTP,
+    resetPassword,
+    changeProfilePic,
+    changeBannerPic,
+    updateProfile,
+    getBloggers,
+    getUserProfile,
+    getCurrentUserProfile,
+    getSavedBlogs
+}

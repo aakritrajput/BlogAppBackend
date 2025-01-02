@@ -13,12 +13,16 @@ app.use(express.urlencoded({extended: true, limit: "25kb"}))
 app.use(express.static("public"))
 app.use(cookieParser())
 
-app.get('/home', (req, res)=> {
-    res.send("app is totally functioning !!")
-})
+// importing routes
+import userRoute from "./routes/user.routes.js"
 
 
 
 
+// decalaring routes 
+app.use("/api/v1/user", userRoute)
 
+
+
+//  http://localhost:5000/api/v1/user
 export {app}
