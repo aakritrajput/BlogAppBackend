@@ -18,18 +18,19 @@ const createBLog = asyncHandler(async(req, res)=>{
     try {
         const {title, content, tags=[""]} =  req.body
         const coverImageLocal = req.file.path
-    
+        console.log("req.file :", req.file)
         const requiredFields = {title, content, coverImageLocal}
         const missingFields = Object.keys(requiredFields).filter(([key, value])=>!value || value.trim().length === 0).map(([key])=>key)
         if (missingFields.length > 0) {
             throw new ApiError(400, `Missing required fields: ${missingFields.join(", ")}`);
         }
         const coverImage = await uploadOnCloudinary(coverImageLocal)
+        console.log("coverImage : ", coverImage)
         const blog = await Blog.create({
             title,
             content,
-            tags,
-            coverImage,
+            tags : tags.split(","),
+            coverImage: coverImage.secure_url,
             author: req.user._id
         })
         if(!blog){
@@ -60,15 +61,22 @@ const updateBlog = asyncHandler(async(req, res)=>{
     try {
         const {blogId} = req.params
         const {title, content , tags } = req.body
-        const newCoverImage = req.file? req.file.path : "" ;
+        const newCoverImage = req.file? req.file.path : "" ;   
         const blog = await Blog.findById(blogId)
         if(!blog){
             throw new ApiError(400, "no user found by the given id")
         }
+        if(blog.author.toString() !== req.user._id.toString()){
+            throw new ApiError(403, "You are not authorized to update this blog")
+        }
+        if(newCoverImage.length > 0){
+            await deleteFromCloudinary(blog.coverImage)
+        } 
+        const coverImage = newCoverImage.length > 0 ? await uploadOnCloudinary(newCoverImage) : ""
         blog.title = title ? title : blog.title;
         blog.content = content ? content : blog.content;
         blog.tags = tags ? tags : blog.tags;
-        blog.coverImage = newCoverImage == "" ? blog.coverImage : newCoverImage
+        blog.coverImage = coverImage == "" ? blog.coverImage : coverImage.secure_url;
         await blog.save({validateBeforeSave:false})
     
         res.status(200).json(new ApiResponse(200, blog, "blog updated successfully"))
@@ -84,6 +92,7 @@ const deleteBlog = asyncHandler(async(req, res)=> {
         if(!deletedBlog){
             throw new ApiError(400, "No blog exists with the given blogId:", blogId)
         }
+        await deleteFromCloudinary(deleteBlog.coverImage)
         res.status(200).json(new ApiResponse(200, {}, "blog deleted successfully"))
     } catch (error) {
         throw new ApiError(500, error.message || "Error deleting the blog with the given blogId:", blogId)
@@ -142,3 +151,13 @@ const getBlogById = asyncHandler(async(req, res)=> {
         throw new ApiError(error.statusCode || 500, error.message || "error fetching the blog with given blogId")
     }
 })
+
+export {
+    createBLog,
+    getUserBlogs,
+    updateBlog,
+    deleteBlog,
+    searchBlogs,
+    getBlogs,
+    getBlogById
+}
