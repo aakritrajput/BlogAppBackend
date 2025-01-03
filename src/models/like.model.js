@@ -3,10 +3,13 @@ import mongoose, {Schema} from "mongoose";
 const likeSchema = new Schema({
     blogId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "Blog",
-        required: true
+        ref: "Blog"
     },
-    userId: {
+    commentId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment"
+    },
+    user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "User",
         required: true

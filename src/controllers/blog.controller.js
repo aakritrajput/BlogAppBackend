@@ -125,7 +125,10 @@ const getBlogs = asyncHandler(async(req, res)=> {
     try {
         const {page= 1, limit = 10} = req.query
         const offset = ( page - 1 ) * limit
-        const blogs = await Blog.find().skip(offset).limit(limit)
+        const blogs = await Blog.find().skip(offset).limit(limit).populate({
+            path: 'author',
+            select: 'profilePic username fullname _id',
+          })
         if(blogs.length === 0){
             throw new ApiError(500, "No blogs to show")
         }
