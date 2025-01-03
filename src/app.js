@@ -16,15 +16,12 @@ app.use(cookieParser())
 // importing routes
 import userRoute from "./routes/user.routes.js"
 import blogRoute from "./routes/blog.routes.js"
-
-
-
+import followingsRoute from "./routes/followings.routes.js"
 
 // decalaring routes 
 app.use("/api/v1/user", userRoute)
 app.use("/api/v1/blog", blogRoute)
-
-
+app.use("/api/v1/followings", followingsRoute)
 
 //  http://localhost:5000/api/v1/user
 export {app}
