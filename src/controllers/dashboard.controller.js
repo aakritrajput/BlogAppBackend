@@ -18,6 +18,7 @@ const dashboard = asyncHandler(async(req, res)=>{
             bannerPic: user.bannerPic,
             username: user.username,
             fullname: user.fullname,
+            bio: user.bio,
             followers ,
             following ,
             totalLikes ,
