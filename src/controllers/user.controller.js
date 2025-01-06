@@ -14,8 +14,8 @@ const generateVerificationToken = (email) => {
 
 const sendVerificationEmail = async (email, token) => {
     try {
-
-      const verificationLink = `http://localhost:5000/api/v1/user/register/verify-token?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+      //api/v1/user/register/verify-token
+      const verificationLink = `http://localhost:5173/verifyEmail?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
       const transporter = nodemailer.createTransport({
         service: "gmail", // Use Gmail's service
         auth: {
@@ -83,7 +83,7 @@ const registerUser = asyncHandler(async (req, res) => {
         const ProfilePicLocalUrl = req.files?.profilePic? req.files.profilePic[0].path : "";
         const ProfilePic = ProfilePicLocalUrl.length>0 ? await uploadOnCloudinary(ProfilePicLocalUrl) : "";
 
-        const BannerPicLocalUrl = req.files.bannerPic? req.files.bannerPic[0].path : "";
+        const BannerPicLocalUrl = req.files?.bannerPic? req.files.bannerPic[0].path : "";
         const BannerPic = BannerPicLocalUrl.length>0 ? await uploadOnCloudinary(BannerPicLocalUrl) : "";
     
         const user = await User.create({
@@ -106,7 +106,7 @@ const registerUser = asyncHandler(async (req, res) => {
         res.status(201).json(new ApiResponse(201, createdUser, "user created SuccessFully !! Check your email for email-verification .."))
     
     } catch (error) {
-        throw new ApiError(500, error.message || "error registering user !!")
+        res.status(error.statusCode || 500).json({ message: error.message || "error registering user !!" }) 
     }
 })
 
@@ -135,7 +135,7 @@ const verifyToken = asyncHandler(async(req,res)=>{
         await user[0].save({validateBeforeSave: false})
         res.status(200).json(new ApiResponse(200, {}, "email successfully verified !!"))
     } catch (error) {
-        throw new ApiError(404, error.message || "verification link expired or not valid !! Request for another verification link ")
+        res.status(error.statusCode || 500).json( error.message || "verification link expired or not valid !! ")
     }
 })
 
@@ -165,7 +165,7 @@ const loginUser = asyncHandler(async(req, res)=>{
         }
     
         if(user[0].isVarified === false){
-            throw new ApiError(402, "Your email is not verified !! check email-box for varification link or request for new link")
+            throw new ApiError(402, "Your email is not verified !! check email-box for verification link or ")
         }
     
         const isPasswordCorrect = await user[0].comparePassword(password)
@@ -196,14 +196,17 @@ const loginUser = asyncHandler(async(req, res)=>{
         .json(new ApiResponse(200, loggedInUser, "User logged in successfully"))
     
     } catch (error) {
-        throw new ApiError(500, error.message || "error logging user in ..")
+        res.status(error.statusCode || 500).json( error.message || "error logging user in ..")
     }
 })
 
 const resendVerificationLink = asyncHandler(async(req, res)=> {
     try {
-        const {email} = req.body
-        const user = await User.find({email})
+        const {email} = req.params
+        const decodedEmail = decodeURIComponent(email)
+        console.log(decodedEmail)
+        const user = await User.find({email: decodedEmail})
+        console.log("user:",user)
         if(user.length === 0){
             throw new ApiError(400, "No user with the given email !!")
         }
@@ -214,7 +217,7 @@ const resendVerificationLink = asyncHandler(async(req, res)=> {
         await sendVerificationEmail(user[0].email, verificationToken);
         res.status(200).json(new ApiResponse(200, {},"verification link sent successfully"))
     } catch (error) {
-        throw new ApiError(500, "Error Sending Verification link")
+        res.status(error.statusCode || 500).json( error.message || "Error Sending Verification link")
     }
 })
 

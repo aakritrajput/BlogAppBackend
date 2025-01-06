@@ -29,8 +29,8 @@ router.route("/register").post(
     ]), registerUser
 )
 router.route("/register/verify-token").get(verifyToken)
-router.route("/login").get(loginUser)
-router.route("/resendVerificationLink").get(resendVerificationLink)
+router.route("/login").post(loginUser)
+router.route("/resendVerificationLink/:email").get(resendVerificationLink)
 router.route("/logout").get(verifyJWT, logoutUser)
 router.route("/changePassword").patch(verifyJWT, changePassword)
 router.route("/sendOTP").patch(sendOTP)
