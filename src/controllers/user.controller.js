@@ -186,10 +186,11 @@ const loginUser = asyncHandler(async(req, res)=>{
     
         const options = {  // cookies can not be modified by frontend but only from the server by this setting or options 
            httpOnly: true,
-           secure: true
+           secure: process.env.NODE_ENV === 'production' , 
+           SameSite:'Lax',
         }
      
-        return res
+        res
         .status(200)
         .cookie("accessToken", accessToken, options)
         .cookie("refreshToken", refreshToken, options)
@@ -222,16 +223,20 @@ const resendVerificationLink = asyncHandler(async(req, res)=> {
 })
 
 const logoutUser = asyncHandler(async(req, res)=> {
-    const options = {  
-        httpOnly: true,
-        secure: true
+    try {
+        const options = {  
+            httpOnly: true,
+            secure: true
+        }
+    
+        return res
+        .status(200)
+        .clearCookie("accessToken", options)
+        .clearCookie("refreshToken", options)
+        .json(new ApiResponse(200, {}, "User Logged Out"))
+    } catch (error) {
+        res.status(error.statusCode || 500).json( error.message || "Error Logging out the user")
     }
-
-    return res
-    .status(200)
-    .clearCookie("accessToken", options)
-    .clearCookie("refreshToken", options)
-    .json(new ApiResponse(200, {}, "User Logged Out"))
 })
 
 const changePassword = asyncHandler(async(req, res)=>{
@@ -441,7 +446,7 @@ const getCurrentUserProfile = asyncHandler(async(req, res)=> {
        const user = req.user
        res.status(200).json(new ApiResponse(200, user, "fetched current user profile successfully !"))
    } catch (error) {
-       throw new ApiError(500, error.message || "error fetching users profile")
+       res.status(error.statusCode || 500).json(error.message || "error fetching users profile")
    }
 })
 
