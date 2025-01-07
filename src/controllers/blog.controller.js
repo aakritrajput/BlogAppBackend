@@ -38,7 +38,7 @@ const createBLog = asyncHandler(async(req, res)=>{
         }
         res.status(200).json(new ApiResponse(200, blog, "blog created successfully!!"))
     } catch (error) {
-        throw new ApiError(500, error.message || "error creating new blog")
+        res.status(error.statusCode || 500).json(error.message || "error creating new blog")
     }
 
 })
