@@ -101,23 +101,60 @@ const deleteBlog = asyncHandler(async(req, res)=> {
 
 const searchBlogs = asyncHandler(async(req, res)=>{
     try {
-        const {query} = req.query;
+        const {query , page = 1, limit = 10} = req.query;
         if(!query || query.trim().length === 0){
             throw new ApiError(400, "invalid or empty query" )
         }
         const words = query.split(" "); 
         const regexPatterns = words.map(word => new RegExp(word, "i")); // Create regex for each word
 
-        const matchedBlogs = await Blog.find({
-            $or: [
-                { title: { $in: regexPatterns } },
-                { tags: { $in: regexPatterns } } 
-            ]
-        });
+        const options = {
+            page: parseInt(page), 
+            limit: parseInt(limit), 
+        };
 
-        res.status(200).json(new ApiResponse(200, matchedBlogs, "fetched matched blogs successfully !!"))
+        const aggregate =  Blog.aggregate([
+            {
+                $match : {
+                    $or: [
+                      { title: { $in: regexPatterns } },
+                      { tags: { $in: regexPatterns } } 
+                    ]
+                }
+            },
+            { 
+                $sort: { createdAt: -1 } 
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "author",
+                    foreignField: "_id",
+                    as: "author",
+                    pipeline: [
+                        {
+                            $project: {
+                                _id: 1,
+                                username: 1,
+                                fullname: 1,
+                                profilePic: 1
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                $unwind: "$author"
+            }
+        ]);
+
+        const blogs = await Blog.aggregatePaginate(aggregate, options);
+        if (blogs.docs.length === 0) {
+            throw new ApiError(404, "No blogs to show");
+        }
+        res.status(200).json(new ApiResponse(200, blogs, `Successfully fetched ${limit} blogs of page ${page}`));
     } catch (error) {
-        throw new ApiError(error.statusCode || 500, error.message || "error getting matched blogs")
+        res.status(error.statusCode || 500).json( error.message || "error getting matched blogs")
     }
 })
 
