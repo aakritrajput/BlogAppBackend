@@ -121,22 +121,53 @@ const searchBlogs = asyncHandler(async(req, res)=>{
     }
 })
 
-const getBlogs = asyncHandler(async(req, res)=> {
+const getBlogs = asyncHandler(async (req, res) => {
     try {
-        const {page= 1, limit = 10} = req.query
-        const offset = ( page - 1 ) * limit
-        const blogs = await Blog.find().skip(offset).limit(limit).populate({
-            path: 'author',
-            select: 'profilePic username fullname _id',
-          })
-        if(blogs.length === 0){
-            throw new ApiError(500, "No blogs to show")
+        const { page = 1, limit = 10 } = req.query;
+
+        const options = {
+            page: parseInt(page), 
+            limit: parseInt(limit), 
+        };
+
+        const aggregate = Blog.aggregate([
+            { 
+                $sort: { createdAt: -1 } 
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "author",
+                    foreignField: "_id",
+                    as: "author",
+                    pipeline: [
+                        {
+                            $project: {
+                                _id: 1,
+                                username: 1,
+                                fullname: 1,
+                                profilePic: 1
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                $unwind: "$author"
+            }
+        ]);
+        const blogs = await Blog.aggregatePaginate(aggregate, options); 
+
+        if (blogs.docs.length === 0) {
+            throw new ApiError(404, "No blogs to show");
         }
-        res.status(200).json(new ApiResponse(200, blogs, `successfully fetched ${limit} blogs of page ${page}`))
+
+        res.status(200).json(new ApiResponse(200, blogs, `Successfully fetched ${limit} blogs of page ${page}`));
     } catch (error) {
-        throw new ApiError(error.statusCode || 500 , error.message || "error fetching blogs")
+        res.status(error.statusCode || 500).json({ message: error.message || "Error fetching blogs" });
     }
-})
+});
+
 
 const getBlogById = asyncHandler(async(req, res)=> {
     try {

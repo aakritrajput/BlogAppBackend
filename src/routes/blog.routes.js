@@ -9,7 +9,7 @@ router.route("/userBlogs").get(verifyJWT, getUserBlogs)
 router.route("/updateBlog/:blogId").patch(verifyJWT, upload.single("coverImage"), updateBlog)
 router.route("/deleteBlog/:blogId").delete(verifyJWT, deleteBlog)
 router.route("/searchBlogs").get(verifyJWT, searchBlogs)
-router.route("/allBlogs").get(verifyJWT, getBlogs)
+router.route("/allBlogs").get(getBlogs)
 router.route("/blogById/:blogId").get(verifyJWT, getBlogById)
 
 export default router 

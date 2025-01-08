@@ -182,7 +182,7 @@ const loginUser = asyncHandler(async(req, res)=>{
             throw new ApiError(500, "error genarating refresh token !")
         }
     
-        const loggedInUser = await User.findById(user[0]._id).select("-password")
+        const loggedInUser = await User.findById(user[0]._id).select("-password -otp -otpExpiry")
     
         const options = {  // cookies can not be modified by frontend but only from the server by this setting or options 
            httpOnly: true,
