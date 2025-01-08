@@ -165,39 +165,44 @@ const getUserFollowings = asyncHandler(async(req, res)=> {
 
 })
 
+const isFollowing = asyncHandler(async(req, res)=> {
+    try {
+        const user = req.user
+        const {bloggerId} = req.params
+        const isFollowingBlogger = await Following.find({blogger: bloggerId, follower: user._id})  //if return docs that means user is following the blogger
+        const isBloggerFollowing = await Following.find({blogger: user._id, follower: bloggerId}) //if return docs that means blogger is following the user
+        const data = {
+            isFollowing: isFollowingBlogger.length > 0,
+            isFollowedByBlogger: isBloggerFollowing.length > 0
+        }
+        res.status(200).json(new ApiResponse(200, data, "successfully get following status"))
+    } catch (error) {
+        res.status(error.statusCode || 500 ).json( error.message || "error getting following status !!")
+    }
+})
+
 const followersCount = asyncHandler(async(req, res)=>{
     try {
         const {userId} = req.params 
     
         const followers = await Following.countDocuments({blogger: userId})
+        const following = await Following.countDocuments({follower: userId})
         const data = {
-            followers
+            followers,
+            following
         }
-        res.status(200).json(new ApiResponse(200, data, "successfully get followers count"))
+        res.status(200).json(new ApiResponse(200, data, "successfully get following and followers count"))
     } catch (error) {
-        throw new ApiError(error.statusCode || 500 , error.message || "error getting followersCount !!")
+        res.status(error.statusCode || 500 ).json( error.message || "error getting following and followersCount !!")
     }
 })
 
-const followingCount = asyncHandler(async(req, res)=>{
-    try {
-        const {userId} = req.params 
-    
-        const following = await Following.countDocuments({follower: userId})
-        const data = {
-            following
-        }
-        res.status(200).json(new ApiResponse(200, data, "successfully get following count"))
-    } catch (error) {
-        throw new ApiError(error.statusCode || 500 , error.message || "error getting followingCount !!")
-    }
-})
 
 export {
     toggleFollow,
     removeFollower,
     getUserFollowers,
     getUserFollowings,
-    followersCount,
-    followingCount
+    isFollowing,
+    followersCount
 }
