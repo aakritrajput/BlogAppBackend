@@ -5,7 +5,7 @@ import { createBLog, deleteBlog, getBlogById, getBlogs, getUserBlogs, searchBlog
 
 const router = Router();
 router.route("/createBlog").post(verifyJWT, upload.single("coverImage"), createBLog)
-router.route("/userBlogs").get(verifyJWT, getUserBlogs)
+router.route("/userBlogs/:userId").get(verifyJWT, getUserBlogs)
 router.route("/updateBlog/:blogId").patch(verifyJWT, upload.single("coverImage"), updateBlog)
 router.route("/deleteBlog/:blogId").delete(verifyJWT, deleteBlog)
 router.route("/searchBlogs").get(verifyJWT, searchBlogs)

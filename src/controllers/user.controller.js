@@ -427,9 +427,6 @@ const getBloggers = asyncHandler(async(req, res)=> {
 
 const getUserProfile = asyncHandler(async(req,res)=>{
     const {userId} = req.params
-    if(!query){
-        throw new ApiError(400, "query is required")
-    }
     try {
         const userProfile = await User.findById(userId).select("-password -otp -otpExpiry")
         if(userProfile.length === 0){
@@ -437,7 +434,7 @@ const getUserProfile = asyncHandler(async(req,res)=>{
         }
         res.status(200).json(new ApiResponse(200, userProfile, "fetched user profile successfully"))
     } catch (error) {
-        throw new ApiError(500, error.message || "error fetching users profile")
+        res.status(error.statusCode || 500).json( error.message || "error fetching users profile")
     }
 })
 

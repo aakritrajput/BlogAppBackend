@@ -45,15 +45,43 @@ const createBLog = asyncHandler(async(req, res)=>{
 
 const getUserBlogs = asyncHandler(async(req, res)=>{
     try {
-        const userBlogs = await Blog.find({
-            author: req.user._id
-        }) 
+        const {userId} = req.params
+        const userBlogs = await Blog.aggregate([
+            {
+                $match: {
+                    author: new mongoose.Types.ObjectId(userId)
+                }
+            },
+            {
+                $lookup: {
+                    from: 'users',
+                    localField: 'author',
+                    foreignField: '_id',
+                    as: 'author',
+                    pipeline: [
+                        {
+                            $project : {
+                                username: 1,
+                                fullname: 1,
+                                profilePic:1,
+                                bannerPic: 1,
+                                bio: 1,
+                                savedBlogs: 1
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                $unwind :'$author'
+            }
+        ])
         if(!userBlogs){
             throw new ApiError(500, "error getting userBlogs")
         }
         res.status(200).json(new ApiResponse(200, userBlogs, "user blogs fetched successfully !!"))
     } catch (error) {
-        throw new ApiError(500, error.message || " error getting userBlogs !")
+        res.status(error.statusCode || 500).json( error.message || " error getting userBlogs !")
     }
 })
 
@@ -204,6 +232,7 @@ const getBlogs = asyncHandler(async (req, res) => {
         res.status(error.statusCode || 500).json({ message: error.message || "Error fetching blogs" });
     }
 });
+
 
 
 const getBlogById = asyncHandler(async(req, res)=> {

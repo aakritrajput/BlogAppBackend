@@ -117,10 +117,26 @@ const getCommentLikesCount = asyncHandler(async(req, res)=>{
     }
 })
 
+const getUsersLikedBlogs = asyncHandler(async(req, res)=>{
+    try {
+        const user = req.user;
+        const likedBlogs = await Like.find({
+            user: user._id,
+            blogId: {
+                $ne : undefined
+            }
+        }).populate("blogId")
+        res.status(200).json(new ApiResponse(200, likedBlogs, "likedBlogs fetchedd successfully !!"))
+    } catch (error) {
+        res.status(error.statusCode || 500).json(error.message || "error getting likedBlogs !!")
+    }
+})
+
 export {
     toggleBlogLike,
     toggleCommentLike,
     getBlogLikes,
     getBlogLikesCount,
-    getCommentLikesCount
+    getCommentLikesCount,
+    getUsersLikedBlogs
 }
