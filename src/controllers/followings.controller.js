@@ -39,7 +39,7 @@ const toggleFollow = asyncHandler(async(req, res)=> {
             res.status(200).json(new ApiResponse(200, data, "Blogger successfully followed !!"))
         }
     } catch (error) {
-        throw new ApiError(error.statusCode || 500, error.message || "error toggling following!!")
+        res.status(error.statusCode || 500).json( error.message || "error toggling following!!")
     }
 })
 

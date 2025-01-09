@@ -421,7 +421,7 @@ const getBloggers = asyncHandler(async(req, res)=> {
         }).select("-password -otp -otpExpiry")
         res.status(200).json(new ApiResponse(200, users, "fetched matching users !!"))
     } catch (error) {
-        throw new ApiError(500, "No user found with the matching username")
+        res.status(error.statusCode || 500 ).json(error.message || "No user found with the matching username")
     }
 })
 
