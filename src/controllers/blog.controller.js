@@ -241,14 +241,14 @@ const getBlogById = asyncHandler(async(req, res)=> {
         if(!blogId){
             throw new ApiError(400, "Please provide a vaid blogId")
         }
-        const blog = await Blog.findById(blogId)
+        const blog = await Blog.findById(blogId).populate({path: "author", select: "username profilePic"})
         if(!blog){
             throw new ApiError(500, "no blog found with the given blogId ")
         }
     
         res.status(200).json(new ApiResponse(200, blog, "blog with given blog id fetched successfully"))
     } catch (error) {
-        throw new ApiError(error.statusCode || 500, error.message || "error fetching the blog with given blogId")
+        res.status(error.statusCode || 500).json( error.message || "error fetching the blog with given blogId")
     }
 })
 

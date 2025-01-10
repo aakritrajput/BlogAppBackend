@@ -365,7 +365,7 @@ const changeProfilePic = asyncHandler(async(req,res)=>{
  
      res.status(200).json(new ApiResponse(200, {profilePic: user.profilePic}, "Profile Pic changed successfully"))
    } catch (error) {
-    throw new ApiError(500, error.message || "error changing profile pic !!")
+     res.status(error.statusCode || 500).json( error.message || "error changing profile pic !!")
    }
 })
 
@@ -378,31 +378,34 @@ const changeBannerPic = asyncHandler(async(req,res)=>{
       const user = req.user
       const oldBannerPic = user.bannerPic
       if(oldBannerPic.length > 0){
-          await deleteFromCloudinary(oldBannerPic)
+          const response = await deleteFromCloudinary(oldBannerPic)
+          if(!response){
+            throw new ApiError(500, "error deleting the old banner pic !!")
+          }
       }
       const newBannerPic = await uploadOnCloudinary(bannerPic)
       user.bannerPic = newBannerPic.url
       await user.save({validateBeforeSave:false})
   
-      res.status(200).json(new ApiResponse(200, {newBannerPic: user.bannerPic}, "Banner Pic changed successfully"))
+      res.status(200).json(new ApiResponse(200, {newBannerPic: user.bannerPic}, "Banner Pic updated successfully"))
     } catch (error) {
-     throw new ApiError(500, error.message || "error changing Banner pic !!")
+        res.status(error.statusCode || 500).json( error.message || "error changing banner pic !!")
     }
  })
 
 const updateProfile = asyncHandler(async(req,res)=>{
     try {
         const {fullname, bio} = req.body
-        if(!fullname){
-            throw new ApiError(400, "fullname is required to update the profile !!")
+        if(!fullname && !bio){
+            throw new ApiError(400, "Fullname or Bio is required to update the profile !!")
         }
         const user = req.user
-        user.fullname = fullname
-        user.bio = bio
+        user.fullname = fullname.length > 0 ? fullname : user.fullname
+        user.bio = bio.length > 0 ? bio : user.bio
         await user.save({validateBeforeSave:false})
         res.status(200).json(new ApiResponse(200, {user}, "Profile updated successfully"))
     } catch (error) {
-        throw new ApiError(500, error.message || "error updating the profile !!")
+        res.status(error.statusCode || 500 ).json( error.message || "error updating the profile !!")
     }
 })
 
