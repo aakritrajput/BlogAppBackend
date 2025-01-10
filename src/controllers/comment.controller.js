@@ -25,7 +25,7 @@ const createComment = asyncHandler(async(req, res)=>{
         }
         res.status(201).json(new ApiResponse(201, comment, "Comment created successfully"));
     } catch (error) {
-        throw new ApiError(error.statusCode || 500, error.message || "error creating comment");
+        res.status(error.statusCode || 500).json( error.message || "error creating comment");
     }
 })
 
@@ -48,7 +48,7 @@ const deleteComment = asyncHandler(async(req, res)=>{
         }
         
     } catch (error) {
-        throw new ApiError(error.statusCode || 500, error.message || "error deleting comment");
+        res.status(error.statusCode || 500).json( error.message || "error deleting comment");
     }
 })
 
@@ -58,24 +58,12 @@ const getblogComments = asyncHandler(async(req, res)=>{
         if(!isValidObjectId(blogId)){
             throw new ApiError(400, "Invalid blogId!!")
         }
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-    
-        if (page <= 0 || limit <= 0) {
-          return next(new ApiError(400, "Page and limit must be positive integers"));
-        }
-        const offset = ( page - 1 ) * limit;
+        
         const comments = await Comment.aggregate([
             {
                 $match: {
                     blogId: new mongoose.Types.ObjectId(blogId)
                 }
-            },
-            {
-                $skip: offset
-            },
-            {
-                $limit : limit
             },
             {
                 $lookup: {
@@ -115,7 +103,7 @@ const getblogComments = asyncHandler(async(req, res)=>{
         ])
         res.status(200).json(new ApiResponse(200, comments, "Comments fetched successfully"));
     } catch (error) {
-        throw new ApiError(error.statusCode || 500, error.message || "error fetching comments");
+        res.status(error.statusCode || 500).json( error.message || "error fetching comments");
     }
 })
 

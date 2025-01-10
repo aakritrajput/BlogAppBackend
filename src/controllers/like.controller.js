@@ -45,7 +45,22 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
                 res.status(200).json(new ApiResponse(200, {like: true}, "Comment liked successfully"))
             }
     } catch (error) {
-        throw new ApiError(error.statusCode || 500, error.message || "error toggling like")
+        res.status(error.statusCode || 500).json( error.message || "error toggling like")
+    }
+})
+
+const isCommentLiked = asyncHandler(async(req, res)=>{
+    try {
+        const {commentId} = req.params;
+        if(!isValidObjectId(commentId)){
+            throw new ApiError(400, "Invalid comment id");
+        }
+        const userId = req.user._id;
+        const isLiked = await Like.exists({commentId,user:userId});
+    
+        res.status(200).json(new ApiResponse(200, {isLiked}, "successfully fetched like info"))
+    } catch (error) {
+        res.status(error.statusCode || 500).json(error.message || "error fetching like info")
     }
 })
 
@@ -113,7 +128,7 @@ const getCommentLikesCount = asyncHandler(async(req, res)=>{
         const likeCount = await Like.countDocuments({commentId})
         res.status(200).json(new ApiResponse(200, {likes: likeCount}, "successfully fetched blog's like Count"))
     } catch (error) {
-        throw new ApiError(error.status || 500, error.message || " error fetching comment likes count")
+        res.status(error.status || 500).json( error.message || " error fetching comment likes count")
     }
 })
 
@@ -138,5 +153,6 @@ export {
     getBlogLikes,
     getBlogLikesCount,
     getCommentLikesCount,
-    getUsersLikedBlogs
+    getUsersLikedBlogs,
+    isCommentLiked
 }
