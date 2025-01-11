@@ -56,9 +56,19 @@ const isCommentLiked = asyncHandler(async(req, res)=>{
             throw new ApiError(400, "Invalid comment id");
         }
         const userId = req.user._id;
-        const isLiked = await Like.exists({commentId,user:userId});
-    
-        res.status(200).json(new ApiResponse(200, {isLiked}, "successfully fetched like info"))
+        const isLiked = await Like.find({commentId,user:userId});
+
+        if(isLiked.length > 0){
+            const data = {
+                isLiked: true
+            }
+            res.status(200).json(new ApiResponse(200, data, "successfully fetched like info"))
+        }else{
+            const data = {
+                isLiked: false
+            }
+            res.status(200).json(new ApiResponse(200, data, "successfully fetched like info"))
+        }
     } catch (error) {
         res.status(error.statusCode || 500).json(error.message || "error fetching like info")
     }

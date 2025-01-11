@@ -20,10 +20,52 @@ const createComment = asyncHandler(async(req, res)=>{
         }
         const userId = req.user._id;
         const comment = await Comment.create({blogId, userId, content});
+        const newComment = await Comment.aggregate([
+            {
+                $match: {
+                    _id: new mongoose.Types.ObjectId(comment._id)
+                }
+            },
+            {
+                $lookup: {
+                    from: "users",
+                    localField: "userId",
+                    foreignField: "_id",
+                    as: "user",
+                    pipeline: [
+                        {
+                            $project: {
+                                _id: 1,
+                                profilePic: 1,
+                                bio:1,
+                                fullname:1,
+                                username: 1
+                            }
+                        }
+                    ]
+                }
+            },
+            {
+                $unwind : {
+                    path: "$user",
+                    preserveNullAndEmptyArrays: true, // Keeps comments even if the user is missing
+                },
+            },
+            {
+                $project: {
+                    _id: 1,
+                    content: 1,
+                    createdAt: 1,
+                    updatedAt: 1,
+                    blogId:1,
+                    user: 1
+                }
+            }
+        ])
         if(!comment){
             throw new ApiError(500, "error creating comment");
         }
-        res.status(201).json(new ApiResponse(201, comment, "Comment created successfully"));
+        res.status(201).json(new ApiResponse(201, newComment[0], "Comment created successfully"));
     } catch (error) {
         res.status(error.statusCode || 500).json( error.message || "error creating comment");
     }
@@ -54,6 +96,7 @@ const deleteComment = asyncHandler(async(req, res)=>{
 
 const getblogComments = asyncHandler(async(req, res)=>{
     try {
+        console.log("getting blogs comment runs !!")
         const {blogId} = req.params;
         if(!isValidObjectId(blogId)){
             throw new ApiError(400, "Invalid blogId!!")
