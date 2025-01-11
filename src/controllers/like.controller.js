@@ -25,7 +25,7 @@ const toggleBlogLike = asyncHandler(async (req, res) => {
                 res.status(200).json(new ApiResponse(200, {like: true}, "Blog liked successfully"))
             }
     } catch (error) {
-        throw new ApiError(error.statusCode || 500, error.message || "error toggling like")
+        res.status(error.statusCode || 500).json( error.message || "error toggling like")
     }
 })
 
@@ -57,6 +57,31 @@ const isCommentLiked = asyncHandler(async(req, res)=>{
         }
         const userId = req.user._id;
         const isLiked = await Like.find({commentId,user:userId});
+
+        if(isLiked.length > 0){
+            const data = {
+                isLiked: true
+            }
+            res.status(200).json(new ApiResponse(200, data, "successfully fetched like info"))
+        }else{
+            const data = {
+                isLiked: false
+            }
+            res.status(200).json(new ApiResponse(200, data, "successfully fetched like info"))
+        }
+    } catch (error) {
+        res.status(error.statusCode || 500).json(error.message || "error fetching like info")
+    }
+})
+
+const isBlogLiked = asyncHandler(async(req, res)=>{
+    try {
+        const {blogId} = req.params;
+        if(!isValidObjectId(blogId)){
+            throw new ApiError(400, "Invalid blog id");
+        }
+        const userId = req.user._id;
+        const isLiked = await Like.find({blogId,user:userId});
 
         if(isLiked.length > 0){
             const data = {
@@ -125,7 +150,7 @@ const getBlogLikesCount = asyncHandler(async(req, res)=>{
         const likeCount = await Like.countDocuments({blogId})
         res.status(200).json(new ApiResponse(200, {likes: likeCount}, "successfully fetched blog's like Count"))
     } catch (error) {
-        throw new ApiError(error.status || 500, error.message || " error fetching blog likes count")
+        res.status(error.status || 500).json( error.message || " error fetching blog likes count")
     }
 })
 
@@ -145,13 +170,60 @@ const getCommentLikesCount = asyncHandler(async(req, res)=>{
 const getUsersLikedBlogs = asyncHandler(async(req, res)=>{
     try {
         const user = req.user;
-        const likedBlogs = await Like.find({
-            user: user._id,
-            blogId: {
-                $ne : undefined
+        const likedBlogs = await Like.aggregate([
+            {
+                $match: {
+                    user: user._id,
+                    blogId: {
+                        $ne : undefined
+                    }
+                }
+            },
+            {
+                $lookup: {
+                    from: "blogs",
+                    localField: "blogId",
+                    foreignField: "_id",
+                    as: "blog",
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "author",
+                                foreignField: "_id",
+                                as: "author",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            _id: 1,
+                                            username: 1,
+                                            fullname: 1,
+                                            profilePic: 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            $unwind: "$author"
+                        }
+                    ]
+                }
+            },
+            {
+                $unwind: "$blog"
+            },
+            {
+                $project: {
+                    blog: 1,
+                    _id: 0
+                }
             }
-        }).populate("blogId")
-        res.status(200).json(new ApiResponse(200, likedBlogs, "likedBlogs fetchedd successfully !!"))
+    ])
+
+    const resultList = [];
+    likedBlogs.map((item)=>{resultList.push(item.blog)})
+    res.status(200).json(new ApiResponse(200, resultList, "likedBlogs fetchedd successfully !!"))
     } catch (error) {
         res.status(error.statusCode || 500).json(error.message || "error getting likedBlogs !!")
     }
@@ -164,5 +236,6 @@ export {
     getBlogLikesCount,
     getCommentLikesCount,
     getUsersLikedBlogs,
-    isCommentLiked
+    isCommentLiked,
+    isBlogLiked
 }

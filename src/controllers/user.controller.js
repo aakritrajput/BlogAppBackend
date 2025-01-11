@@ -467,7 +467,30 @@ const getSavedBlogs = asyncHandler(async(req, res)=> {
                     from : "blogs",
                     localField: "savedBlogs",
                     foreignField : "_id",
-                    as:'savedBlogDetails'
+                    as:'savedBlogDetails',
+                    pipeline: [
+                        {
+                            $lookup: {
+                                from: "users",
+                                localField: "author",
+                                foreignField: "_id",
+                                as: "author",
+                                pipeline: [
+                                    {
+                                        $project: {
+                                            _id: 1,
+                                            username: 1,
+                                            fullname: 1,
+                                            profilePic: 1
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            $unwind: "$author"
+                        }
+                    ]
                 }
             },
             {
@@ -488,6 +511,18 @@ const getSavedBlogs = asyncHandler(async(req, res)=> {
     }
 }) 
 
+const removeFromSavedBlogs = asyncHandler(async(req, res)=> {
+    const {blogId} = req.params
+    try {
+        await User.findByIdAndUpdate(req.user._id, {
+            $pull: {savedBlogs: blogId}
+        })
+        res.status(200).json(new ApiResponse(200, {}, "Blog removed from saved blogs successfully"))
+    } catch (error) {
+        res.status(error.statusCode || 500).json(error.message || "error removing blog from saved blogs")
+    }
+})
+
 export {
     registerUser,
     verifyToken,
@@ -504,5 +539,6 @@ export {
     getBloggers,
     getUserProfile,
     getCurrentUserProfile,
-    getSavedBlogs
+    getSavedBlogs,
+    removeFromSavedBlogs
 }

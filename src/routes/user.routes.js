@@ -11,6 +11,7 @@ import {
     loginUser, 
     logoutUser, 
     registerUser, 
+    removeFromSavedBlogs, 
     resendVerificationLink, 
     resetPassword, 
     sendOTP, 
@@ -43,5 +44,6 @@ router.route("/bloggers").get(verifyJWT, getBloggers)
 router.route("/userProfile/:userId").get(verifyJWT, getUserProfile)
 router.route("/profile").get(verifyJWT, getCurrentUserProfile)
 router.route("/savedBlogs").get(verifyJWT, getSavedBlogs)
+router.route("/removeFromSavedBlogs/:blogId").patch(verifyJWT, removeFromSavedBlogs)
 
 export default router

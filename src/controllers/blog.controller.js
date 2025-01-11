@@ -116,11 +116,13 @@ const updateBlog = asyncHandler(async(req, res)=>{
 const deleteBlog = asyncHandler(async(req, res)=> {
      const {blogId} = req.params
     try {
+        const blog = await Blog.findById(blogId)
+        await deleteFromCloudinary(blog.coverImage)
         const deletedBlog = await Blog.findByIdAndDelete(blogId)
         if(!deletedBlog){
             throw new ApiError(400, "No blog exists with the given blogId:", blogId)
         }
-        await deleteFromCloudinary(deleteBlog.coverImage)
+        
         res.status(200).json(new ApiResponse(200, {}, "blog deleted successfully"))
     } catch (error) {
         throw new ApiError(500, error.message || "Error deleting the blog with the given blogId:", blogId)
@@ -233,7 +235,36 @@ const getBlogs = asyncHandler(async (req, res) => {
     }
 });
 
+const saveBlog = asyncHandler(async(req, res)=>{
+    
+    try {
+        const {blogId} = req.params
+        await User.findByIdAndUpdate(req.user._id, {
+            $addToSet: {savedBlogs: blogId}
+        })
+    
+        res.status(200).json(new ApiResponse(200, {}, "blog saved successfully"))
+    } catch (error) {
+        res.status(error.statusCode || 500).json( error.message || "error saving the blog")
+    }
+})
 
+const isBlogSaved = asyncHandler(async(req, res)=>{
+    const {blogId} = req.params
+    try {
+        const user = await User.findById(req.user._id)
+        if(!user){
+            throw new ApiError(400, "No user found with the given userId")
+        }
+        const isSaved = user.savedBlogs.includes(blogId)
+        const data = {
+            isSaved
+        }
+        res.status(200).json(new ApiResponse(200, data, "successfully fetched save info"))
+    } catch (error) {
+        res.status(error.statusCode || 500).json(error.message || "error fetching save info")
+    }
+})
 
 const getBlogById = asyncHandler(async(req, res)=> {
     try {
@@ -259,5 +290,7 @@ export {
     deleteBlog,
     searchBlogs,
     getBlogs,
-    getBlogById
+    getBlogById,
+    saveBlog,
+    isBlogSaved
 }
