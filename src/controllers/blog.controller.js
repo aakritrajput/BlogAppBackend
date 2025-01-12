@@ -88,11 +88,11 @@ const getUserBlogs = asyncHandler(async(req, res)=>{
 const updateBlog = asyncHandler(async(req, res)=>{
     try {
         const {blogId} = req.params
-        const {title, content , tags } = req.body
+        const { title, content , tags } = req.body
         const newCoverImage = req.file? req.file.path : "" ;   
         const blog = await Blog.findById(blogId)
         if(!blog){
-            throw new ApiError(400, "no user found by the given id")
+            throw new ApiError(400, "no blog found by the given id")
         }
         if(blog.author.toString() !== req.user._id.toString()){
             throw new ApiError(403, "You are not authorized to update this blog")
@@ -109,7 +109,7 @@ const updateBlog = asyncHandler(async(req, res)=>{
     
         res.status(200).json(new ApiResponse(200, blog, "blog updated successfully"))
     } catch (error) {
-        throw new ApiError(500, error.message || "error updating blog")
+        res.status(500 || error.message).json(error.message || "error updating blog")
     }
 })
 
