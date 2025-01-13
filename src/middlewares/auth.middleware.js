@@ -7,7 +7,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
     try {
         // Retrieve the access token
         const accessToken = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
-        //console.log(req)
+        //console.log('req:', req.cookies)
         if (!accessToken) {
             throw new ApiError(401, "Unauthorized request - No access token provided");
         }
@@ -53,7 +53,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
                 throw new ApiError(401, refreshError.message || "Invalid or expired refresh token");
             }
         } else {
-            throw new ApiError(401, error.message || "Unauthorized");
+            throw new ApiError(error.statusCode || 401).json( error.message || "Unauthorized");
         }
     }
 });
