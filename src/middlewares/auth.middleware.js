@@ -7,7 +7,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
     try {
         // Retrieve the access token
         const accessToken = req.cookies?.accessToken || req.headers.authorization?.split(" ")[1];
-        //console.log('req:', req.cookies)
+        console.log('req:', req.cookies)
         if (!accessToken) {
             throw new ApiError(401, "Unauthorized request - No access token provided");
         }
