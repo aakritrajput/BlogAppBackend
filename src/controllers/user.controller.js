@@ -378,10 +378,7 @@ const changeBannerPic = asyncHandler(async(req,res)=>{
       const user = req.user
       const oldBannerPic = user.bannerPic
       if(oldBannerPic.length > 0){
-          const response = await deleteFromCloudinary(oldBannerPic)
-          if(!response){
-            throw new ApiError(500, "error deleting the old banner pic !!")
-          }
+        await deleteFromCloudinary(oldBannerPic)
       }
       const newBannerPic = await uploadOnCloudinary(bannerPic)
       user.bannerPic = newBannerPic.url
