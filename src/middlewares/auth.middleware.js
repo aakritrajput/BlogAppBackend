@@ -53,7 +53,7 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
                 throw new ApiError(401, refreshError.message || "Invalid or expired refresh token");
             }
         } else {
-            throw new ApiError(error.statusCode || 401).json( error.message || "Unauthorized");
+            res.status(error.statusCode || 401).json( error.message || "Unauthorized");
         }
     }
 });

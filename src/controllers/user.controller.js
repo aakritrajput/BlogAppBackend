@@ -187,7 +187,7 @@ const loginUser = asyncHandler(async(req, res)=>{
         const options = {  // cookies can not be modified by frontend but only from the server by this setting or options 
            httpOnly: true,
            secure: process.env.NODE_ENV === 'production' , 
-           sameSite: 'None', 
+           sameSite: 'None' 
         }
      
         res
@@ -440,6 +440,7 @@ const getUserProfile = asyncHandler(async(req,res)=>{
 
 const getCurrentUserProfile = asyncHandler(async(req, res)=> {
    try {
+    console.log('profile runs!!')
        const user = req.user
        res.status(200).json(new ApiResponse(200, user, "fetched current user profile successfully !"))
    } catch (error) {
