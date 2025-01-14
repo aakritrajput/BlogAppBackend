@@ -91,8 +91,8 @@ const registerUser = asyncHandler(async (req, res) => {
             fullname,
             email,
             password,
-            profilePic : ProfilePic?.url || "",
-            bannerPic : BannerPic?.url || "",
+            profilePic : ProfilePic?.secure_url || "",
+            bannerPic : BannerPic?.secure_url || "",
             bio
         })
         if(!user){
@@ -360,7 +360,7 @@ const changeProfilePic = asyncHandler(async(req,res)=>{
          await deleteFromCloudinary(oldProfilePic)
      }
      const newProfilePic = await uploadOnCloudinary(profilePic)
-     user.profilePic = newProfilePic.url
+     user.profilePic = newProfilePic.secure_url
      await user.save({validateBeforeSave:false})
  
      res.status(200).json(new ApiResponse(200, {profilePic: user.profilePic}, "Profile Pic changed successfully"))
@@ -381,7 +381,7 @@ const changeBannerPic = asyncHandler(async(req,res)=>{
         await deleteFromCloudinary(oldBannerPic)
       }
       const newBannerPic = await uploadOnCloudinary(bannerPic)
-      user.bannerPic = newBannerPic.url
+      user.bannerPic = newBannerPic.secure_url
       await user.save({validateBeforeSave:false})
   
       res.status(200).json(new ApiResponse(200, {newBannerPic: user.bannerPic}, "Banner Pic updated successfully"))
