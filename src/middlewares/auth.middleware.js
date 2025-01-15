@@ -43,14 +43,14 @@ const verifyJWT = asyncHandler(async (req, res, next) => {
                 res.cookie("accessToken", newAccessToken, {
                     httpOnly: true,
                     secure: true, // Ensure cookies are sent over HTTPS
-                    sameSite: "Strict", // CSRF protection
+                    sameSite: 'None', // CSRF protection
                 });
 
                 req.user = user; // Attach user to request
                 next(); // Proceed to the next middleware
 
             } catch (refreshError) {
-                throw new ApiError(401, refreshError.message || "Invalid or expired refresh token");
+                res.status(refreshError.statusCode || 401).json( refreshError.message || "Invalid or expired refresh token");
             }
         } else {
             res.status(error.statusCode || 401).json( error.message || "Unauthorized");

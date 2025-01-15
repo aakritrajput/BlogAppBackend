@@ -428,6 +428,7 @@ const getBloggers = asyncHandler(async(req, res)=> {
 
 const getUserProfile = asyncHandler(async(req,res)=>{
     const {userId} = req.params
+    console.log("get user profile runs !!")
     try {
         const userProfile = await User.findById(userId).select("-password -otp -otpExpiry")
         if(userProfile.length === 0){
