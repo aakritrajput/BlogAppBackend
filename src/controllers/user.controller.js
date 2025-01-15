@@ -188,8 +188,6 @@ const loginUser = asyncHandler(async(req, res)=>{
            httpOnly: true,
            secure: true , 
            sameSite: 'None',
-           domain: 'blogappbackend-uy9g.onrender.com', // Explicitly set the domain
-           path: '/', // Ensure cookies are accessible across the entire backend
            maxAge: 15 * 60 * 1000 
         }
      
