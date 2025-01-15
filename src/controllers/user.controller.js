@@ -184,9 +184,9 @@ const loginUser = asyncHandler(async(req, res)=>{
     
         const loggedInUser = await User.findById(user[0]._id).select("-password -otp -otpExpiry")
     
-        const options = {  // cookies can not be modified by frontend but only from the server by this setting or options 
+        const options = {  
            httpOnly: true,
-           secure: process.env.NODE_ENV === 'production' , 
+           secure: true , 
            sameSite: 'None' 
         }
      
