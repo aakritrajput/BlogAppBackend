@@ -6,7 +6,14 @@ const app = express()
 
 app.use(cors({
     origin: 'https://blog-app-frontend-sooty.vercel.app',
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'], // Include PATCH method
+    allowedHeaders: [
+        'Content-Type', // For JSON and FormData
+        'Authorization', // If you send tokens in headers
+        'Accept', // For cross-origin responses
+        'X-Requested-With' // Useful for certain libraries
+    ],
 }))
 app.use(express.json({limit: "50kb"}))
 app.use(express.urlencoded({extended: true, limit: "25kb"}))

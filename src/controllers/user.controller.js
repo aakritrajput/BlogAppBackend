@@ -140,14 +140,6 @@ const verifyToken = asyncHandler(async(req,res)=>{
 })
 
 const loginUser = asyncHandler(async(req, res)=>{
-    // get login details 
-    // validate details -- provided or not
-    // check for the user in database and check if he is verified or not ? 
-    // if not verified ask him to verify or regenarate verification email !!
-    // if verified compare password 
-    // then genarae access token and refresh token 
-    // send response along with cookies containing access and refresh tokens !!!
-
     try {
         const {emailOrUsername, password} = req.body
         if(!emailOrUsername || !password){
