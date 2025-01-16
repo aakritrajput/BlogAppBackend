@@ -15,7 +15,7 @@ const generateVerificationToken = (email) => {
 const sendVerificationEmail = async (email, token) => {
     try {
       //api/v1/user/register/verify-token
-      const verificationLink = `http://localhost:5173/verifyEmail?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+      const verificationLink = `https://blog-app-frontend-sooty.vercel.app/verifyEmail?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
       const transporter = nodemailer.createTransport({
         service: "gmail", // Use Gmail's service
         auth: {
